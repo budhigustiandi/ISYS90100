@@ -10,6 +10,6 @@ while [ true ]; do
 	datastreamID=1063643
 	targetUrl="https://scratchpad.sensorup.com/OGCSensorThings/v1.0/Observations"
 	curl -X POST -H "Content-Type: application/json" -d '{"phenomenonTime": "'$year'-'$month'-'$day'T'$hourMinuteSecond'.000Z", "resultTime": "'$year'-'$month'-'$day'T'$hourMinuteSecond'.000Z", "result": '$measurement', "Datastream": {"@iot.id": '$datastreamID'}}' $targetUrl
-	# curl -X POST -H "Content-Type: application/json" -d '$measurement' $targetUrl
+	# curl -X POST -H "Content-Type: application/json" -d $measurement $targetUrl
 	sleep 5
 done
