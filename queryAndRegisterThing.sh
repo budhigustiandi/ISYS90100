@@ -86,3 +86,12 @@ else
 	thingID=`echo $searchResult | awk -F"," '{ print $2 }' | awk -F":" '{ print $3 }'`
 	echo "The thing is already exist and its ID is $thingID"
 fi
+
+# Read measurement(s) from sensor(s)
+while [ true ]; do
+	lightIntensity=`sudo python readSensor.py | awk -F"," '{ print $1 }'`
+	moistureLevel=`sudo python readSensor.py | awk -F"," '{ print $2 }'`
+	echo "Light Intensity = $lightIntensity"
+	echo "Moisture Level = $moistureLevel"
+	sleep 5
+done
