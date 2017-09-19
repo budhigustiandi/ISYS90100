@@ -35,7 +35,7 @@ if [ ${searchResult:14:1} -eq 0 ]; then
 	# Find the thing's ID
 	searchResult=`curl -X GET -H "Content-Type: application/json" "http://scratchpad.sensorup.com/OGCSensorThings/v1.0/Things?%24filter=name%20eq%20%27$thingsName%27"`
         thingID=`echo $searchResult | awk -F"," '{ print $2 }' | awk -F":" '{ print $3 }'`
-        echo "The thing's ID is $thingID"
+        echo "The thing was succesfully created. The thing's ID is $thingID"
 
 	# Add datastream(s) here
 	targetUrl="https://scratchpad.sensorup.com/OGCSensorThings/v1.0/Things($thingID)/Datastreams"
@@ -85,13 +85,52 @@ else
 	# Find the thing's ID
 	thingID=`echo $searchResult | awk -F"," '{ print $2 }' | awk -F":" '{ print $3 }'`
 	echo "The thing is already exist and its ID is $thingID"
-fi
 
-# Read measurement(s) from sensor(s)
-while [ true ]; do
-	lightIntensity=`sudo python readSensor.py | awk -F"," '{ print $1 }'`
-	moistureLevel=`sudo python readSensor.py | awk -F"," '{ print $2 }'`
-	echo "Light Intensity = $lightIntensity"
-	echo "Moisture Level = $moistureLevel"
-	sleep 5
-done
+	# Read measurement(s) from sensor(s) and upload it (them) to the server
+	while [ true ]; do
+		lightIntensity=`sudo python readSensor.py | awk -F"," '{ print $1 }'`
+		moistureLevel=`sudo python readSensor.py | awk -F"," '{ print $2 }'`
+		year=`date +%Y`
+        	month=`date +%m`
+        	day=`date +%d`
+        	hourMinuteSecond=`date | awk {'print $4'}`
+		searchResult=`curl -X GET -H "Content-Type: application/json" "https://scratchpad.sensorup.com/OGCSensorThings/v1.0/Things($thingID)/Datastreams"`
+		numberOfDatastream=`echo $searchResult | awk -F"value" '{ print $1 }' | awk -F":" '{ print $2 }' | awk -F"," '{ print $1 }'`
+		if [ $numberOfDatastream -eq 1 ]; then
+			echo "There is 1 datastream detected."
+		else
+			echo "There are $numberOfDatastream datastreams detected."
+		fi
+        	targetUrl="https://scratchpad.sensorup.com/OGCSensorThings/v1.0/Observations"
+
+		# Find the datastream ID for light intensity
+                datastreamID=`echo $searchResult | awk -F"@iot.id" '{ print $3 }' | awk -F":" '{ print $2 }' | awk -F"," '{ print $1 }'`
+		echo "Light Intensity = $lightIntensity"
+		echo "Datastream ID is $datastreamID."
+		echo "Uploading to the server..."
+
+		# Upload the light intensity measurement into the server
+		curl -X POST -H "Content-Type: application/json" -d '{
+			"phenomenonTime": "'$year'-'$month'-'$day'T'$hourMinuteSecond'.000Z",
+			"resultTime": "'$year'-'$month'-'$day'T'$hourMinuteSecond'.000Z",
+			"result": '$lightIntensity',
+			"Datastream": {"@iot.id": '$datastreamID'}
+		}' $targetUrl
+
+		# Find the datastream ID for moisture level
+		datastreamID=`echo $searchResult | awk -F"@iot.id" '{ print $2 }' | awk -F":" '{ print $2 }' | awk -F"," '{ print $1 }'`
+		echo "Moisture Level = $moistureLevel"
+		echo "Datastream ID is $datastreamID."
+		echo "Uploading to the server..."
+
+		# Upload the moisture measurement into the server
+                curl -X POST -H "Content-Type: application/json" -d '{
+                        "phenomenonTime": "'$year'-'$month'-'$day'T'$hourMinuteSecond'.000Z",
+                        "resultTime": "'$year'-'$month'-'$day'T'$hourMinuteSecond'.000Z",
+                        "result": '$moistureLevel',
+                        "Datastream": {"@iot.id": '$datastreamID'}
+                }' $targetUrl
+
+		sleep 5
+	done
+fi
